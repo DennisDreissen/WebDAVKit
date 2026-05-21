@@ -45,6 +45,7 @@ public struct WebDAVClient: Sendable {
     /// - Parameters:
     ///   - path: The path of the resource to get the details of.
     ///   - customHeaders: Additional headers to include in the request to the WebDAV server.
+    @discardableResult
     public func head(
         path: String,
         customHeaders: [String: String] = [:]
