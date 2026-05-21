@@ -1,0 +1,71 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3-noble
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v5
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-unit-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-unit-
+            ${{ runner.os }}-spm-
+
+      - name: Run unit tests
+        run: swift test --filter WebDAVKitTests
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3-noble
+    services:
+      webdav:
+        image: ghcr.io/dennisdreissen/webdav:latest
+        ports:
+          - 29190:80
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install curl
+        run: |
+          apt-get update
+          apt-get install -y curl
+
+      - name: Wait for WebDAV
+        run: |
+          until curl -sf -X OPTIONS -u username:password http://webdav:80/; do
+            echo "Waiting for WebDAV..."
+            sleep 2
+          done
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v5
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-integration-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-integration-
+            ${{ runner.os }}-spm-
+
+      - name: Run integration tests
+        env:
+          WEBDAV_BASE_URL: http://webdav:80
+        run: swift test --filter WebDAVKitIntegrationTests
