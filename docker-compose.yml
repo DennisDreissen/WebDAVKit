@@ -1,0 +1,22 @@
+services:
+  webdav:
+    build: .
+    ports:
+      - "29190:80"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - '-X'
+        - 'OPTIONS'
+        - '-u'
+        - 'username:password'
+        - 'http://localhost:80'
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  default:
+    name: webdavclient_test_network
