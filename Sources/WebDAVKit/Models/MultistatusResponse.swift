@@ -15,7 +15,8 @@ struct MultistatusResponse: Decodable {
     struct Response: Decodable {
 
         let href: String
-        let propstat: [Propstat]
+        let propstat: [Propstat]?
+        let status: String?
 
         struct Propstat: Decodable {
 
@@ -45,23 +46,35 @@ struct MultistatusResponse: Decodable {
 extension MultistatusResponse {
 
     var webDAVObjects: [WebDAVResource] {
-        response.map {
-            let prop = $0.propstat
-                .first { $0.status.contains("200") }?
-                .prop
+        get throws {
+            try response.map { resource in
+                let successful = (resource.propstat ?? []).filter {
+                    Self.statusCode($0.status).map { (200..<300).contains($0) } ?? false
+                }.map(\.prop)
 
-            let name = prop?.displayname.flatMap { $0.isEmpty ? nil : $0 }
-            ?? URL(string: $0.href)?.lastPathComponent
+                // A failed or absent resourcetype cannot establish that an entry is a file.
+                guard let resourceType = successful.compactMap(\.resourcetype).first else {
+                    throw WebDAVError.resourcePropertiesUnavailable
+                }
 
-            return WebDAVResource(
-                eTag: prop?.getetag,
-                name: name,
-                path: $0.href,
-                size: prop?.getcontentlength.flatMap { Int64($0) },
-                contentType: prop?.getcontenttype,
-                lastModified: prop?.getlastmodified.flatMap { DateFormatter.rfc2822.date(from: $0) },
-                isDirectory: prop?.resourcetype?.collection != nil
-            )
+                let displayName = successful.compactMap(\.displayname).first { !$0.isEmpty }
+                return WebDAVResource(
+                    eTag: successful.compactMap(\.getetag).first,
+                    name: displayName ?? URL(string: resource.href)?.lastPathComponent,
+                    path: resource.href,
+                    size: successful.compactMap(\.getcontentlength).compactMap(Int64.init).first,
+                    contentType: successful.compactMap(\.getcontenttype).first,
+                    lastModified: successful.compactMap(\.getlastmodified)
+                        .compactMap { DateFormatter.rfc2822.date(from: $0) }.first,
+                    isDirectory: resourceType.collection != nil
+                )
+            }
         }
+    }
+
+    private static func statusCode(_ status: String) -> Int? {
+        let parts = status.split(whereSeparator: \.isWhitespace)
+        guard parts.count >= 2, parts[0].hasPrefix("HTTP/"), parts[1].count == 3 else { return nil }
+        return Int(parts[1])
     }
 }

@@ -14,6 +14,9 @@ public enum WebDAVError: Error, Sendable, Equatable {
     /// Decoding the response body failed.
     case decodingResponseFailed
 
+    /// The server did not return a successful resourcetype property for an entry.
+    case resourcePropertiesUnavailable
+
     /// The server returned an error. Contains the status code returned by the WebDAV server.
     case responseError(statusCode: Int)
 }
