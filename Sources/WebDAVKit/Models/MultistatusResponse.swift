@@ -45,22 +45,22 @@ struct MultistatusResponse: Decodable {
 extension MultistatusResponse {
 
     var webDAVObjects: [WebDAVResource] {
-        response.map {
-            let prop = $0.propstat
-                .first { $0.status.contains("200") }?
-                .prop
+        response.map { item in
+            let props = item.propstat
+                .filter { $0.status.isSuccessfulHTTPStatus }
+                .map(\.prop)
 
-            let name = prop?.displayname.flatMap { $0.isEmpty ? nil : $0 }
-            ?? URL(string: $0.href)?.lastPathComponent
+            let displayName = props.compactMap(\.displayname).first { !$0.isEmpty }
+            let name = displayName ?? URL(string: item.href)?.lastPathComponent
 
             return WebDAVResource(
-                eTag: prop?.getetag,
+                eTag: props.compactMap(\.getetag).first,
                 name: name,
-                path: $0.href,
-                size: prop?.getcontentlength.flatMap { Int64($0) },
-                contentType: prop?.getcontenttype,
-                lastModified: prop?.getlastmodified.flatMap { DateFormatter.rfc2822.date(from: $0) },
-                isDirectory: prop?.resourcetype?.collection != nil
+                path: item.href,
+                size: props.compactMap(\.getcontentlength).compactMap { Int64($0) }.first,
+                contentType: props.compactMap(\.getcontenttype).first,
+                lastModified: props.compactMap(\.getlastmodified).compactMap { DateFormatter.rfc2822.date(from: $0) }.first,
+                isDirectory: props.isEmpty ? nil : props.contains { $0.resourcetype?.collection != nil }
             )
         }
     }

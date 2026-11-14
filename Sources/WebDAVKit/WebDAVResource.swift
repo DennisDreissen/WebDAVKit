@@ -29,7 +29,7 @@ public struct WebDAVResource: Sendable, Equatable {
     public let lastModified: Date?
 
     /// Whether or no the resource is a directory.
-    public let isDirectory: Bool
+    public let isDirectory: Bool?
 
     public init(
         eTag: String?,
@@ -38,7 +38,7 @@ public struct WebDAVResource: Sendable, Equatable {
         size: Int64?,
         contentType: String?,
         lastModified: Date?,
-        isDirectory: Bool
+        isDirectory: Bool?
     ) {
         self.eTag = eTag
         self.name = name
