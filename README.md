@@ -6,7 +6,7 @@
 
 This is a lightweight WebDAV client for interacting with WebDAV servers.
 
-> This library was created to support a WebDAV feature in an app I worked on. Currently there's no tagged release since I'm still making changes or adding new operations as needed. If you would like to use this library in one of your projects, please create an issue and I will create an initial `1.0.0` release. The API is mostly stable at this point. There is also an [S3](https://github.com/DennisDreissen/S3Kit) equivalent with a similar API.
+> This library was created to support a WebDAV feature in an app I worked on. There is also an [S3](https://github.com/DennisDreissen/S3Kit) equivalent with a similar API.
 
  ```swift
 let client = WebDAVClient(
