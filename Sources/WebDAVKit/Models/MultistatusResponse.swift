@@ -52,6 +52,7 @@ extension MultistatusResponse {
 
             let displayName = props.compactMap(\.displayname).first { !$0.isEmpty }
             let name = displayName ?? URL(string: item.href)?.lastPathComponent
+            let resourceTypes = props.compactMap(\.resourcetype)
 
             return WebDAVResource(
                 eTag: props.compactMap(\.getetag).first,
@@ -60,7 +61,7 @@ extension MultistatusResponse {
                 size: props.compactMap(\.getcontentlength).compactMap { Int64($0) }.first,
                 contentType: props.compactMap(\.getcontenttype).first,
                 lastModified: props.compactMap(\.getlastmodified).compactMap { DateFormatter.rfc2822.date(from: $0) }.first,
-                isDirectory: props.isEmpty ? nil : props.contains { $0.resourcetype?.collection != nil }
+                isDirectory: resourceTypes.isEmpty ? nil : resourceTypes.contains { $0.collection != nil }
             )
         }
     }

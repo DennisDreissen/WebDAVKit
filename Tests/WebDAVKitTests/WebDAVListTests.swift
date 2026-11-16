@@ -204,6 +204,57 @@ func listNoProps() async throws {
 }
 
 @Test
+func listUnavailableResourceType() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockWebDAVHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listDataUnavailableResourceType,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "Content-Type": "application/xml",
+                    "test-header": "test-value"
+                ]
+            )!
+        )
+    }
+
+    let client = createWebDAVClient(httpClient: httpClient)
+
+    let response = try await client.list(
+        path: "/Example"
+    )
+
+    #expect(urlRequest.httpMethod == "PROPFIND")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/Example")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") == exampleAuthorizationHeader)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/xml")
+
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: .contentType) == "application/xml")
+
+    #expect(
+        response.result ==
+        [
+            WebDAVResource(
+                eTag: nil,
+                name: "Restricted",
+                path: "/Example/",
+                size: nil,
+                contentType: nil,
+                lastModified: nil,
+                isDirectory: nil
+            )
+        ]
+    )
+}
+
+@Test
 func list_withInvalidXML() async throws {
     let httpClient = MockWebDAVHTTPClient { request in
         return (
@@ -428,6 +479,32 @@ private let listDataNoProps = """
                 <g0:resourcetype/>
                 <g0:displayname/>
                 <g0:getcontentlength/>
+            </D:prop>
+            <D:status>HTTP/1.1 403 Forbidden</D:status>
+        </D:propstat>
+    </D:response>
+</D:multistatus>
+""".data(using: .utf8)!
+
+private let listDataUnavailableResourceType = """
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus
+    xmlns:D="DAV:"
+    xmlns:ns0="DAV:">
+    <D:response
+        xmlns:lp1="DAV:"
+        xmlns:lp2="http://apache.org/dav/props/"
+        xmlns:g0="DAV:">
+        <D:href>/Example/</D:href>
+        <D:propstat>
+            <D:prop>
+                <D:displayname>Restricted</D:displayname>
+            </D:prop>
+            <D:status>HTTP/1.1 200 OK</D:status>
+        </D:propstat>
+        <D:propstat>
+            <D:prop>
+                <D:resourcetype/>
             </D:prop>
             <D:status>HTTP/1.1 403 Forbidden</D:status>
         </D:propstat>
